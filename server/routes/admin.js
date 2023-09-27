@@ -9,11 +9,11 @@ const adminLayout = '../views/layouts/admin'
 const jwtSecret = process.env.JWT_SECRET
 
 
-const authMiddleware = (req,res,next) => {
+const authMiddleware = (req, res, next) => {
     const token = req.cookies.token
 
-    if(!token){
-        return res.status(401).json({ message : 'Unauthorized' })
+    if (!token) {
+        return res.status(401).json({ message: 'Unauthorized' })
     }
 
     try {
@@ -21,8 +21,8 @@ const authMiddleware = (req,res,next) => {
         req.userId = decode.userId;
         next();
     } catch (error) {
-        return res.status(401).json({ message : 'Unauthorized' })
-        
+        return res.status(401).json({ message: 'Unauthorized' })
+
     }
 }
 
@@ -42,31 +42,119 @@ router.get('/admin', async (req, res) => {
 
 router.post('/admin', async (req, res) => {
     try {
-      const { username, password } = req.body;
-      
-      const user = await User.findOne( { username } );
-  
-      if(!user) {
-        return res.status(401).json( { message: 'Invalid credentials' } );
-      }
-  
-      const isPasswordValid = await bcrypt.compare(password, user.password);
-  
-      if(!isPasswordValid) {
-        return res.status(401).json( { message: 'Invalid credentials' } );
-      }
-  
-      const token = jwt.sign({ userId: user._id}, jwtSecret );
-      res.cookie('token', token, { httpOnly: true });
-      res.redirect('/dashboard');
-  
-    } catch (error) {
-      console.log(error);
-    }
-  });
+        const { username, password } = req.body;
 
-router.get('/dashboard', authMiddleware ,async (req, res) => {
-    res.render('admin/dashboard')
+        const user = await User.findOne({ username });
+
+        if (!user) {
+            return res.status(401).json({ message: 'Invalid credentials' });
+        }
+
+        const isPasswordValid = await bcrypt.compare(password, user.password);
+
+        if (!isPasswordValid) {
+            return res.status(401).json({ message: 'Invalid credentials' });
+        }
+
+        const token = jwt.sign({ userId: user._id }, jwtSecret);
+        res.cookie('token', token, { httpOnly: true });
+        res.redirect('/dashboard');
+
+    } catch (error) {
+        console.log(error);
+    }
+});
+
+router.get('/dashboard', authMiddleware, async (req, res) => {
+    try {
+        const locals = {
+            title: "Admin",
+            description: "Simple Blog created with NodeJs, Express & MongoDb."
+        }
+
+        const data = await Post.find()
+        res.render('admin/dashboard', {
+            locals, data, layout: adminLayout
+        })
+    } catch (error) {
+        console.log(error)
+    }
+});
+
+router.get('/add-post', authMiddleware, async (req, res) => {
+    try {
+        const locals = {
+            title: "Add Post",
+            description: "Simple Blog created with NodeJs, Express & MongoDb."
+        }
+
+        res.render('admin/add-post', {
+            locals, layout: adminLayout
+        })
+    } catch (error) {
+        console.log(error)
+    }
+});
+
+router.post('/add-post', authMiddleware, async (req, res) => {
+    try {
+        try {
+            const newPost = new Post({
+                title: req.body.title,
+                body: req.body.body
+            });
+            await Post.create(newPost)
+            res.redirect('/dashboard')
+        } catch (error) {
+            console.log(error)
+        }
+    } catch (error) {
+        console.log(error)
+    }
+});
+
+
+router.get('/edit-post/:id', authMiddleware, async (req,res) => {
+        try {
+            const locals = {
+                title: "Edit Post",
+                description: "Simple Blog created with NodeJs, Express & MongoDb."
+            }
+
+            let postId = req.params.id;
+            const data =  await Post.findById(postId)
+
+            res.render('admin/edit-post', {
+                locals, data, layout: adminLayout
+            })
+        } catch (error) {
+            console.log(error)
+        }
+});
+
+router.put('/edit-post/:id', authMiddleware, async (req,res) => {
+    try {
+        let postId = req.params.id;
+        const {title, body} = req.body;
+
+      await Post.findByIdAndUpdate(postId, {
+        title, body, updatedAt: Date.now()
+      })
+
+        res.redirect(`/edit-post/${postId}`)
+
+    } catch (error) {
+        console.log(error)
+    }
+});
+
+router.delete('/delete-post/:id', authMiddleware, async (req, res)=>{
+    try {
+         await Post.deleteOne({ _id: req.params.id });
+         res.redirect('/dashboard')
+    } catch (error) {
+        console.log(error)
+    }
 });
 
 
