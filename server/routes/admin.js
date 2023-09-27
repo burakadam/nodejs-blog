@@ -157,9 +157,6 @@ router.delete('/delete-post/:id', authMiddleware, async (req, res)=>{
     }
 });
 
-
-
-
 router.post('/register', async (req, res) => {
     try {
         const { username, password } = req.body;
@@ -183,5 +180,11 @@ router.post('/register', async (req, res) => {
         console.log(error);
     }
 });
+
+
+router.get('/logout', async (req, res) => {
+    res.clearCookie('token');
+    res.redirect('/')
+})
 
 module.exports = router;
